@@ -198,12 +198,14 @@ async function handleSearch() {
 
     const ssData = ssRes.status === 'fulfilled' ? ssRes.value : { flights: [], mock: true };
     const gData  = gRes.status  === 'fulfilled' ? gRes.value  : { flights: [], mock: true };
-    const isMock = ssData.mock || gData.mock;
+    const isMock = gData.mock;
 
-    state.allFlights   = [...(ssData.flights || []), ...(gData.flights || [])];
-    state.visibleCount = 8;
-    state.activeSource = 'all';
-    state.activeSort   = 'price';
+    state.allFlights      = [...(ssData.flights || []), ...(gData.flights || [])];
+    state.skyscannerUrl   = ssData.skyscannerUrl || null;
+    state.deepLinkOnly    = ssData.deepLinkOnly || false;
+    state.visibleCount    = 8;
+    state.activeSource    = 'all';
+    state.activeSort      = 'price';
 
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.source === 'all'));
     document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === 'price'));
@@ -250,8 +252,14 @@ function renderFlights() {
   const lowestPrice = flights.length ? flights[0].price : Infinity;
 
   flightList.innerHTML = '';
-  if (!flights.length) {
-    flightList.innerHTML = '<div style="text-align:center;padding:40px;color:#64748b;">找不到符合條件的航班</div>';
+
+  // Show Skyscanner deep link banner when viewing Skyscanner tab or all
+  if (state.skyscannerUrl && (state.activeSource === 'all' || state.activeSource === 'skyscanner') && state.deepLinkOnly) {
+    flightList.appendChild(createSkyscannerBanner());
+  }
+
+  if (!flights.length && !state.deepLinkOnly) {
+    flightList.innerHTML += '<div style="text-align:center;padding:40px;color:#64748b;">找不到符合條件的航班</div>';
     loadMoreWrap.style.display = 'none';
     return;
   }
@@ -262,6 +270,23 @@ function renderFlights() {
   });
 
   loadMoreWrap.style.display = state.visibleCount < flights.length ? 'block' : 'none';
+}
+
+function createSkyscannerBanner() {
+  const banner = document.createElement('div');
+  banner.className = 'skyscanner-banner';
+  banner.innerHTML = `
+    <div class="skyscanner-banner-inner">
+      <div class="skyscanner-banner-left">
+        <img src="https://www.skyscanner.com/favicon.ico" width="28" />
+        <div>
+          <div class="skyscanner-banner-title">在 Skyscanner 搜尋更多航班</div>
+          <div class="skyscanner-banner-sub">點擊直接跳轉到 Skyscanner 搜尋結果，查看完整票價與比較</div>
+        </div>
+      </div>
+      <a href="${state.skyscannerUrl}" target="_blank" class="skyscanner-banner-btn">前往 Skyscanner →</a>
+    </div>`;
+  return banner;
 }
 
 function renderMore() {

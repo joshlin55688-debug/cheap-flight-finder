@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
@@ -11,7 +11,7 @@ const HISTORY_FILE = path.join(__dirname, 'price_history.json');
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── History helpers ───────────────────────────────────────────────────────────
 function loadHistory() {
@@ -125,35 +125,44 @@ app.get('/api/flights/google', async (req, res) => {
   }
 
   try {
+    const isRoundTrip = !!returnDate;
     const params = {
       engine: 'google_flights',
       departure_id: origin,
       arrival_id: destination,
       outbound_date: date,
+      type: isRoundTrip ? '1' : '2',  // 1=round-trip, 2=one-way
       currency: 'TWD',
       hl: 'zh-tw',
       api_key: process.env.SERPAPI_KEY
     };
-    if (returnDate) params.return_date = returnDate;
+    if (isRoundTrip) params.return_date = returnDate;
 
     const { data } = await axios.get('https://serpapi.com/search', { params });
 
     const raw = [...(data?.best_flights || []), ...(data?.other_flights || [])];
     const flights = raw.map((item, i) => {
-      const seg = item.flights?.[0] || {};
+      const firstSeg = item.flights?.[0] || {};
+      const lastSeg  = item.flights?.[item.flights.length - 1] || firstSeg;
+
+      // departure time from first segment, arrival from last segment
+      const depTime = firstSeg.departure_airport?.time?.slice(-5) || '';
+      const arrTime = lastSeg.arrival_airport?.time?.slice(-5) || '';
+
       return {
         id: `google-${i}`,
-        airline: seg.airline || '未知航空',
-        airlineLogo: seg.airline_logo || '',
+        airline: firstSeg.airline || item.airline || '未知航空',
+        airlineLogo: item.airline_logo || firstSeg.airline_logo || '',
+        flightNumber: firstSeg.flight_number || '',
         price: item.price || 0,
         priceFormatted: `TWD ${(item.price || 0).toLocaleString()}`,
         currency: 'TWD',
         duration: formatMinutes(item.total_duration),
         stops: (item.flights?.length || 1) - 1,
-        departure: seg.departure_airport?.time?.slice(-5) || '',
-        arrival: seg.arrival_airport?.time?.slice(-5) || '',
+        departure: depTime,
+        arrival: arrTime,
         source: 'google',
-        bookingUrl: `https://www.google.com/travel/flights`
+        bookingUrl: 'https://www.google.com/travel/flights'
       };
     });
 

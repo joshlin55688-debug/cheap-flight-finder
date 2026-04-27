@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>便宜機票查詢 | Cheap Flight Finder</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- ─── Header ─── -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">✈ CheapFly</div>
+    <nav class="nav">
+      <a href="#search">搜尋機票</a>
+      <a href="#history-section">歷史最低價</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ─── Hero ─── -->
+<section class="hero" id="search">
+  <div class="hero-content">
+    <h1>找到最便宜的機票</h1>
+    <p>同步比較 Skyscanner & Google Flights，顯示歷史最低紀錄</p>
+
+    <div class="search-card">
+      <!-- Trip type -->
+      <div class="trip-type-row">
+        <label class="radio-label">
+          <input type="radio" name="tripType" value="oneway" checked /> 單程
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="tripType" value="roundtrip" /> 來回
+        </label>
+        <div class="passenger-select">
+          <span>👤</span>
+          <select id="adults">
+            <option value="1">1 位成人</option>
+            <option value="2">2 位成人</option>
+            <option value="3">3 位成人</option>
+            <option value="4">4 位成人</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Airport inputs -->
+      <div class="airport-row">
+        <div class="airport-field" id="origin-field">
+          <label>出發地</label>
+          <input type="text" id="origin-input" placeholder="城市或機場（例：台北 TPE）" autocomplete="off" />
+          <div class="airport-dropdown" id="origin-dropdown"></div>
+          <input type="hidden" id="origin-skyId" />
+          <input type="hidden" id="origin-entityId" />
+          <input type="hidden" id="origin-iata" />
+        </div>
+
+        <button class="swap-btn" id="swap-btn" title="交換出發地與目的地">⇄</button>
+
+        <div class="airport-field" id="destination-field">
+          <label>目的地</label>
+          <input type="text" id="destination-input" placeholder="城市或機場（例：東京 NRT）" autocomplete="off" />
+          <div class="airport-dropdown" id="destination-dropdown"></div>
+          <input type="hidden" id="destination-skyId" />
+          <input type="hidden" id="destination-entityId" />
+          <input type="hidden" id="destination-iata" />
+        </div>
+      </div>
+
+      <!-- Dates -->
+      <div class="date-row">
+        <div class="date-field">
+          <label>出發日期</label>
+          <input type="date" id="depart-date" />
+        </div>
+        <div class="date-field" id="return-date-field" style="display:none">
+          <label>回程日期</label>
+          <input type="date" id="return-date" />
+        </div>
+      </div>
+
+      <button class="search-btn" id="search-btn">
+        <span class="search-btn-icon">🔍</span> 搜尋最便宜機票
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Mock mode banner ─── -->
+<div class="mock-banner" id="mock-banner" style="display:none">
+  ⚠️ 目前為模擬資料模式 — 請在 <code>.env</code> 填入 API Key 以取得真實票價
+</div>
+
+<!-- ─── Results ─── -->
+<section class="results-section" id="results-section" style="display:none">
+  <div class="container">
+
+    <!-- Summary bar -->
+    <div class="result-summary" id="result-summary"></div>
+
+    <!-- Source tabs -->
+    <div class="source-tabs">
+      <button class="tab-btn active" data-source="all">全部結果</button>
+      <button class="tab-btn" data-source="skyscanner">
+        <img src="https://www.skyscanner.com/favicon.ico" width="16" /> Skyscanner
+      </button>
+      <button class="tab-btn" data-source="google">
+        <img src="https://www.google.com/favicon.ico" width="16" /> Google Flights
+      </button>
+    </div>
+
+    <!-- Sort -->
+    <div class="sort-row">
+      <span>排序：</span>
+      <button class="sort-btn active" data-sort="price">價格最低</button>
+      <button class="sort-btn" data-sort="duration">飛行最短</button>
+      <button class="sort-btn" data-sort="departure">出發最早</button>
+    </div>
+
+    <!-- Flight cards -->
+    <div class="flight-list" id="flight-list"></div>
+
+    <!-- Load more -->
+    <div class="load-more-wrap" id="load-more-wrap" style="display:none">
+      <button class="load-more-btn" id="load-more-btn">顯示更多航班</button>
+    </div>
+  </div>
+</section>
+
+<!-- ─── History Chart ─── -->
+<section class="history-section" id="history-section" style="display:none">
+  <div class="container">
+    <h2>📊 歷史最低票價紀錄</h2>
+    <p class="history-desc" id="history-desc"></p>
+    <div class="chart-wrap">
+      <canvas id="price-chart"></canvas>
+    </div>
+    <div class="history-stats" id="history-stats"></div>
+  </div>
+</section>
+
+<!-- ─── Loading overlay ─── -->
+<div class="loading-overlay" id="loading-overlay" style="display:none">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <p>正在搜尋最便宜機票⋯</p>
+    <small>同步查詢 Skyscanner & Google Flights</small>
+  </div>
+</div>
+
+<footer class="footer">
+  <p>© 2025 CheapFly | 資料來源：Skyscanner (RapidAPI) & Google Flights (SerpApi)</p>
+</footer>
+
+<script src="/js/app.js"></script>
+</body>
+</html>

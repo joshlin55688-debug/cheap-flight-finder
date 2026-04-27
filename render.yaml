@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: cheap-flight-finder
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RAPIDAPI_KEY
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
